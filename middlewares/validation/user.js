@@ -1,4 +1,5 @@
 const { check, validationResult } = require("express-validator");
+const { sendError } = require("../../helper/error");
 
 exports.validateUserSignUp = [
     check("fullname")
@@ -36,7 +37,9 @@ exports.userVlidation = (req, res, next) => {
     if (!result.length) return next();
 
     const error = result[0].msg;
-    res.json({ success: false, message: error });
+    sendError(res, error);
+
+    // res.status(400).json({ success: false, message: error });
 };
 
 exports.validateUserSignIn = [

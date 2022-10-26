@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema({
         type: String,
     },
     avatar: String,
+    verified: {
+        type: Boolean,
+        default: false,
+        require: true
+    },
     tokens: [{ type: Object }],
 });
 
@@ -45,17 +50,17 @@ userSchema.methods.comparePassword = async function (password) {
     }
 };
 
-userSchema.statics.isThisEmailInUse = async function (email) {
-    if (!email) throw new Error("Email already registered!");
-    try {
-        const user = await this.findOne({ email });
-        if (user) return false;
+// userSchema.statics.isThisEmailInUse = async function (email) {
+//     if (!email) throw new Error("Email already registered!");
+//     try {
+//         const user = await this.findOne({ email });
+//         if (user) return false;
 
-        return true;
-    } catch (error) {
-        console.log("error inside isThisEmailInUse method", error.message);
-        return false;
-    }
-};
+//         return true;
+//     } catch (error) {
+//         console.log("error inside isThisEmailInUse method", error.message);
+//         return false;
+//     }
+// };
 
 module.exports = mongoose.model("User", userSchema);

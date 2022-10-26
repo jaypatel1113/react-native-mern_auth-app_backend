@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { sendError } = require("../helper/error");
 const User = require("../models/user");
 
 exports.isAuth = async (req, res, next) => {
@@ -9,31 +10,22 @@ exports.isAuth = async (req, res, next) => {
             const decode = jwt.verify(token, process.env.JWT_SECRET);
             const user = await User.findById(decode.userId);
             if (!user) {
-                return res.json({
-                    success: false,
-                    message: "unauthorized access!",
-                });
+                return sendError(res, "unauthorized access!");
             }
 
             req.user = user;
             next();
         } catch (error) {
             if (error.name === "JsonWebTokenError") {
-                return res.json({
-                    success: false,
-                    message: "unauthorized access!",
-                });
+                return sendError(res, "unauthorized access!");
             }
             if (error.name === "TokenExpiredError") {
-                return res.json({
-                    success: false,
-                    message: "sesson expired try sign in!",
-                });
+                return sendError(res, "session expired try sign in!");
             }
-
-            res.res.json({ success: false, message: "Internal server error!" });
+            
+            sendError(res, "Internal server error!");
         }
     } else {
-        res.json({ success: false, message: "unauthorized access!" });
+        return sendError(res, "unauthorized access!");
     }
 };
