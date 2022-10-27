@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 exports.sendError = (res, message, status=401) => {
     res
         .status(status)
@@ -6,3 +8,12 @@ exports.sendError = (res, message, status=401) => {
             message,
         });
 }
+
+exports.createRandomBytes = () => new Promise((resolve, reject) => {
+    crypto.randomBytes(30, (err, buff) => {
+        if(err) reject(err);
+        
+        const token = buff.toString('hex');
+        resolve(token);
+    }) 
+})

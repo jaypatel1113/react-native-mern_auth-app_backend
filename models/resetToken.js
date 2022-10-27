@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const verificationTokenSchema = new mongoose.Schema({
+const resetTokenSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -11,7 +11,7 @@ const verificationTokenSchema = new mongoose.Schema({
         type: String,
         require: true
     },
-    unhashedToken: {
+    unhashedResetToken: {
         type: String,
         require: true
     },
@@ -22,16 +22,16 @@ const verificationTokenSchema = new mongoose.Schema({
     }
 });
 
-verificationTokenSchema.pre("save", async function (next) {
+resetTokenSchema.pre("save", async function (next) {
     if (this.isModified("token")) {
-        this.unhashedToken = this.token;
+        this.unhashedResetToken = this.token;
         const hash = await bcrypt.hash(this.token, 8);
         this.token = hash;
     }
     next();
 });
 
-verificationTokenSchema.methods.comparePassword = async function (token) {
+resetTokenSchema.methods.compareToken = async function (token) {
     if (!token) throw new Error("Token is mission, can not compare!");
 
     try {
@@ -42,4 +42,4 @@ verificationTokenSchema.methods.comparePassword = async function (token) {
     }
 };
 
-module.exports = mongoose.model("VerificationToken", verificationTokenSchema);
+module.exports = mongoose.model("ResetToken", resetTokenSchema);

@@ -1,9 +1,10 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const VerificationToken = require("../models/verificationToken");
+const ResetToken = require("../models/resetToken");
 const cloudinary = require("../helper/imageUpload");
-const { sendError } = require("../helper/error");
-const { generateOTP, mailTransport, generateEmailTemplate, verifiedEmailTemplate } = require("../helper/mail");
+const { sendError, createRandomBytes } = require("../helper/error");
+const { generateOTP, mailTransport, generateEmailTemplate, verifiedEmailTemplate, generatePasswordResetTemplate, verifiedPasswordTemplate } = require("../helper/mail");
 const { isValidObjectId } = require("mongoose");
 
 exports.createUser = async (req, res) => {
@@ -72,8 +73,65 @@ exports.verifyEmail = async (req, res) => {
         html:verifiedEmailTemplate()
     })
 
-    res.json({ success: true, message: "Your email is successfully verified successfully!" });
+    res.json({ success: true, message: "Your email is verified successfully!" });
 }
+
+exports.forgetPassword = async (req, res) => {
+    const {email} = req.body;
+    if(!email) return sendError(res, "Please enter a valid email!");
+    
+    const user = await User.findOne({email});
+    if(!user) return sendError(res, "User not found!");
+    
+    const token = await ResetToken.findOne({owner: user._id});
+    if(token) return sendError(res, "After only 1hr you can request for another token!");
+    
+    const randomBytes = await createRandomBytes();
+    // console.log(randomBytes);
+    const resetToken = await ResetToken({
+        owner: user._id, token: randomBytes
+    })
+    await resetToken.save();
+    
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: user.email,
+        subject: "Password Reset Link",
+        html:generatePasswordResetTemplate(`http://localhost:3000/reset-password?token=${randomBytes}&id=${user._id}`)
+    })
+    res.json({ success: true, message: "Password reset link sent successfully!" });
+}
+
+exports.resetPassword = async (req, res) => {
+    const {password} = req.body;
+    
+    const user = await User.findById(req.user._id);
+    if(!user) return sendError(res, "user not found!");
+    
+    const isSamePassword = await user.comparePassword(password);
+    // console.log(isSamePassword);
+
+    if(isSamePassword) return sendError(res, "new Password must be different!");
+    if(password.trim().length < 8 || password.trim().length > 20)
+    return sendError(res, "password must be 8 to 20 char long!");
+    
+    
+    // await User.findByIdAndUpdate(req.user._id, {password});
+    // user.save()
+    user.password = password.trim();
+    await user.save();
+    await ResetToken.findOneAndDelete({owner: user._id});
+    
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: user.email,
+        subject: "Password Changed Successfully",
+        html: verifiedPasswordTemplate()
+    })
+
+    res.json({ success: true, message: "Your password is changed successfully!" });
+}
+
 
 exports.userSignIn = async (req, res) => {
     const { email, password } = req.body;

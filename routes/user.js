@@ -7,12 +7,15 @@ const {
     uploadProfile,
     signOut,
     verifyEmail,
+    forgetPassword,
+    resetPassword,
 } = require("../controllers/user");
 const { isAuth } = require("../middlewares/auth");
 const {
     validateUserSignUp,
     userVlidation,
     validateUserSignIn,
+    isResetTokenValid,
 } = require("../middlewares/validation/user");
 
 const multer = require("multer");
@@ -32,6 +35,8 @@ router.post("/create-user", validateUserSignUp, userVlidation, createUser);
 router.post("/sign-in", validateUserSignIn, userVlidation, userSignIn);
 router.post("/sign-out", isAuth, signOut);
 router.post("/verify-email", verifyEmail);
+router.post("/forget-password", forgetPassword);
+router.post("/reset-password", isResetTokenValid ,resetPassword);
 router.post(
     "/upload-profile",
     isAuth,
