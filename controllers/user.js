@@ -15,192 +15,162 @@ exports.createUser = async (req, res) => {
     //         success: false,
     //         message: "This email is already in use, try sign-in",
     //     });
-    try {
-        const olduser = await User.findOne({ email });
-        // console.log(olduser);
-        if (olduser)
-            return sendError(res, "This email is already in use, try sign-in");
+    const olduser = await User.findOne({ email });
+    // console.log(olduser);
+    if (olduser)
+        return sendError(res, "This email is already in use, try sign-in");
+
+    const newUser = await User({
+        fullname,
+        email,
+        password,
+    });
+
+    // creating token and validating email using verification code
+    const OTP = generateOTP();
+    // console.log(OTP);
+    const verifyToken = await VerificationToken({
+        owner: newUser._id,
+        token: OTP,
+    })
     
-        const newUser = await User({
-            fullname,
-            email,
-            password,
-        });
-    
-        // creating token and validating email using verification code
-        const OTP = generateOTP();
-        // console.log(OTP);
-        const verifyToken = await VerificationToken({
-            owner: newUser._id,
-            token: OTP,
-        })
-        
-        mailTransport().sendMail({
-            from:process.env.EMAIL,
-            to: newUser.email,
-            subject: "verify your email account",
-            html:generateEmailTemplate(OTP)
-        })
-    
-        await verifyToken.save();
-        await newUser.save();
-        res.json({ success: true, newUser });
-        
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
-    }
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: newUser.email,
+        subject: "verify your email account",
+        html:generateEmailTemplate(OTP)
+    })
+
+    await verifyToken.save();
+    await newUser.save();
+    res.json({ success: true, newUser });
 };
 
 exports.verifyEmail = async (req, res) => {
     const {id, otp} = req.body;
-    try {
-        if(!id || !otp.trim()) return sendError(res, "Invalid Request, missing parameters!")
-        if(!isValidObjectId(id)) return sendError(res, "Invalid user id");
+    if(!id || !otp.trim()) return sendError(res, "Invalid Request, missing parameters!")
+    if(!isValidObjectId(id)) return sendError(res, "Invalid user id");
+
+    const user = await User.findById(id);
+    // console.log(user);
+    if(!user) return sendError(res, "sorry, user not found");
     
-        const user = await User.findById(id);
-        console.log(user);
-        if(!user) return sendError(res, "sorry, user not found");
-        
-        if(user.verified) return sendError(res, "this account is already veriified!");
-        const token = await VerificationToken.findOne({owner: user._id});
-        if(!token) return sendError(res, "sorry, user not found");
-        
-        const isMatched = await token.comparePassword(otp);
-        console.log(isMatched);
-        if(!isMatched) return sendError(res, "incorrect OTP!");
-        
-        await User.findByIdAndUpdate(id, {verified: true})
-        await VerificationToken.findByIdAndDelete(token._id);
+    if(user.verified) return sendError(res, "this account is already veriified!");
+    const token = await VerificationToken.findOne({owner: user._id});
+    if(!token) return sendError(res, "sorry, user not found");
     
-        mailTransport().sendMail({
-            from:process.env.EMAIL,
-            to: user.email,
-            subject: "Email Verified Successfully",
-            html:verifiedEmailTemplate()
-        })
+    const isMatched = await token.comparePassword(otp);
+    // console.log(isMatched);
+    if(!isMatched) return sendError(res, "incorrect OTP!");
     
-        res.json({ success: true, message: "Your email is verified successfully!" });
-        
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
-    }
+    await User.findByIdAndUpdate(id, {verified: true})
+    await VerificationToken.findByIdAndDelete(token._id);
+
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: user.email,
+        subject: "Email Verified Successfully",
+        html:verifiedEmailTemplate()
+    })
+
+    res.json({ success: true, message: "Your email is verified successfully!" });
 }
 
 exports.forgetPassword = async (req, res) => {
     const {email} = req.body;
-    try {
-        if(!email) return sendError(res, "Please enter a valid email!");
-        
-        const user = await User.findOne({email});
-        if(!user) return sendError(res, "User not found!");
-        
-        const token = await ResetToken.findOne({owner: user._id});
-        if(token) return sendError(res, "After only 1hr you can request for another token!");
-        
-        const randomBytes = await createRandomBytes();
-        // console.log(randomBytes);
-        const resetToken = await ResetToken({
-            owner: user._id, token: randomBytes
-        })
-        await resetToken.save();
-        
-        mailTransport().sendMail({
-            from:process.env.EMAIL,
-            to: user.email,
-            subject: "Password Reset Link",
-            html:generatePasswordResetTemplate(`https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`)
-        })
-        res.json({ success: true, message: "Password reset link sent successfully!" });
-        
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
-    }
+    if(!email) return sendError(res, "Please enter a valid email!");
+    
+    const user = await User.findOne({email});
+    if(!user) return sendError(res, "User not found!");
+    
+    const token = await ResetToken.findOne({owner: user._id});
+    if(token) return sendError(res, "After only 1hr you can request for another token!");
+    
+    const randomBytes = await createRandomBytes();
+    // console.log(randomBytes);
+    const resetToken = await ResetToken({
+        owner: user._id, token: randomBytes
+    })
+    await resetToken.save();
+    
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: user.email,
+        subject: "Password Reset Link",
+        html:generatePasswordResetTemplate(`https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`)
+    })
+    res.json({ success: true, message: "Password reset link sent successfully!" });
 }
 
 exports.resetPassword = async (req, res) => {
     const {password} = req.body;
     
-    try {
-        const user = await User.findById(req.user._id);
-        if(!user) return sendError(res, "user not found!");
-        
-        const isSamePassword = await user.comparePassword(password);
-        // console.log(isSamePassword);
+    const user = await User.findById(req.user._id);
+    if(!user) return sendError(res, "user not found!");
     
-        if(isSamePassword) return sendError(res, "new Password must be different!");
-        if(password.trim().length < 8 || password.trim().length > 20)
-        return sendError(res, "password must be 8 to 20 char long!");
-        
-        
-        // await User.findByIdAndUpdate(req.user._id, {password});
-        // user.save()
-        user.password = password.trim();
-        await user.save();
-        await ResetToken.findOneAndDelete({owner: user._id});
-        
-        mailTransport().sendMail({
-            from:process.env.EMAIL,
-            to: user.email,
-            subject: "Password Changed Successfully",
-            html: verifiedPasswordTemplate()
-        })
+    const isSamePassword = await user.comparePassword(password);
+    // console.log(isSamePassword);
+
+    if(isSamePassword) return sendError(res, "new Password must be different!");
+    if(password.trim().length < 8 || password.trim().length > 20)
+    return sendError(res, "password must be 8 to 20 char long!");
     
-        res.json({ success: true, message: "Your password is changed successfully!" });
-        
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
-    }
+    
+    // await User.findByIdAndUpdate(req.user._id, {password});
+    // user.save()
+    user.password = password.trim();
+    await user.save();
+    await ResetToken.findOneAndDelete({owner: user._id});
+    
+    mailTransport().sendMail({
+        from:process.env.EMAIL,
+        to: user.email,
+        subject: "Password Changed Successfully",
+        html: verifiedPasswordTemplate()
+    })
+
+    res.json({ success: true, message: "Your password is changed successfully!" });
 }
 
 
 exports.userSignIn = async (req, res) => {
     const { email, password } = req.body;
 
-    try {
-        const user = await User.findOne({ email });
-    
-        if (!user)
-            return sendError(res, "user not found, with the given email!"); 
-    
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch)
-            return sendError(res, "email / password does not match!");
-    
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "1d",
+    const user = await User.findOne({ email });
+
+    if (!user)
+        return sendError(res, "user not found, with the given email!"); 
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch)
+        return sendError(res, "email / password does not match!");
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+    });
+
+    let oldTokens = user.tokens || [];
+
+    if (oldTokens.length) {
+        oldTokens = oldTokens.filter((t) => {
+            const timeDiff = (Date.now() - parseInt(t.signedAt)) / 1000;
+            if (timeDiff < 86400) {
+                return t;
+            }
         });
-    
-        let oldTokens = user.tokens || [];
-    
-        if (oldTokens.length) {
-            oldTokens = oldTokens.filter((t) => {
-                const timeDiff = (Date.now() - parseInt(t.signedAt)) / 1000;
-                if (timeDiff < 86400) {
-                    return t;
-                }
-            });
-        }
-    
-        await User.findByIdAndUpdate(user._id, {
-            tokens: [...oldTokens, { token, signedAt: Date.now().toString() }],
-        });
-    
-        const userInfo = {
-            fullname: user.fullname,
-            email: user.email,
-            avatar: user.avatar ? user.avatar : "",
-        };
-    
-        res.json({ success: true, user: userInfo, token });
-        
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
     }
+
+    await User.findByIdAndUpdate(user._id, {
+        tokens: [...oldTokens, { token, signedAt: Date.now().toString() }],
+    });
+
+    const userInfo = {
+        fullname: user.fullname,
+        email: user.email,
+        avatar: user.avatar ? user.avatar : "",
+    };
+
+    res.json({ success: true, user: userInfo, token });
 };
 
 exports.uploadProfile = async (req, res) => {
@@ -232,22 +202,19 @@ exports.uploadProfile = async (req, res) => {
 };
 
 exports.signOut = async (req, res) => {
-    try {
-        if (req.headers && req.headers.authorization) {
-            const token = req.headers.authorization.split(" ")[1];
-            if (!token) {
-                return sendError(res, "authorization fail!");
-            }
-    
-            const tokens = req.user.tokens;
-    
-            const newTokens = tokens.filter((t) => t.token !== token);
-    
-            await User.findByIdAndUpdate(req.user._id, { tokens: newTokens });
-            res.json({ success: true, message: "Sign out successfully!" });
+    if (req.headers && req.headers.authorization) {
+        const token = req.headers.authorization.split(" ")[1];
+        if (!token) {
+            return res
+                .status(401)
+                .json({ success: false, message: "Authorization fail!" });
         }
-    } catch (error) {
-        sendError(res, "server error, try after some time!", 500);
-        console.log(error);
+
+        const tokens = req.user.tokens;
+
+        const newTokens = tokens.filter((t) => t.token !== token);
+
+        await User.findByIdAndUpdate(req.user._id, { tokens: newTokens });
+        res.json({ success: true, message: "Sign out successfully!" });
     }
 };
