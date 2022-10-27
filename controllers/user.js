@@ -97,7 +97,18 @@ exports.forgetPassword = async (req, res) => {
         from:process.env.EMAIL,
         to: user.email,
         subject: "Password Reset Link",
-        html:generatePasswordResetTemplate(`http://localhost:3000/reset-password?token=${randomBytes}&id=${user._id}`)
+        html:generatePasswordResetTemplate(`http://localhost:3000/reset-password?token=${randomBytes}&id=${user._id}`)}, function(err) {
+
+            if (err){
+                console.log( 'err->>>>>>>>>>>>>', err);
+                res.json({ success: true, message: "error in sending mail" });
+                return exits.success('error');
+
+            } else {
+               console.log('email sent success');
+               res.json({ success: true, message: "Password reset link sent successfully!" });
+               return exits.success('success');
+            }
     })
     res.json({ success: true, message: "Password reset link sent successfully!" });
 }
