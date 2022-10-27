@@ -16,9 +16,9 @@ const PORT = 8000 || process.env.PORT;
 //   });
 // });
 
+app.use(cors()); // Use this after the variable declaration
 app.use(express.json());
 app.use(userRouter);
-app.use(cors()); // Use this after the variable declaration
 
 // const test = async (email, password) => {
 //   const user = await User.findOne({ email: email });
