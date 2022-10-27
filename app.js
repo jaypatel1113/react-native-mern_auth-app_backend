@@ -2,39 +2,38 @@ const express = require("express");
 require("dotenv").config();
 require("./models/db");
 const userRouter = require("./routes/user");
-var cors = require('cors');
-
+var cors = require("cors");
 
 const app = express();
 
 const PORT = 8000 || process.env.PORT;
 
 // app.use((req, res, next) => {
-    //   req.on('data', chunk => {
-        //     const data = JSON.parse(chunk);
-        //     req.body = data;
-        //     next();
-        //   });
-        // });
-        
-        app.use(express.json());
-        app.use(userRouter);
-        app.use(cors()) // Use this after the variable declaration
-        
-        // const test = async (email, password) => {
-            //   const user = await User.findOne({ email: email });
-            //   const result = await user.comparePassword(password);
-            //   console.log(result);
-            // };
-            
-            // test('niraj@email.com', 'niraj12');
-            
-            app.get("/test", (req, res) => {
-                res.send("Hello world");
-            });
-            
-            app.get("/", (req, res) => {
-                res.json({
+//   req.on('data', chunk => {
+//     const data = JSON.parse(chunk);
+//     req.body = data;
+//     next();
+//   });
+// });
+
+app.use(express.json());
+app.use(userRouter);
+app.use(cors()); // Use this after the variable declaration
+
+// const test = async (email, password) => {
+//   const user = await User.findOne({ email: email });
+//   const result = await user.comparePassword(password);
+//   console.log(result);
+// };
+
+// test('niraj@email.com', 'niraj12');
+
+app.get("/test", (req, res) => {
+    res.send("Hello world");
+});
+
+app.get("/", (req, res) => {
+    res.json({
         success: true,
         message: `Welcome to backend zone!, listening on port ${PORT}`,
     });
