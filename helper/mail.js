@@ -10,14 +10,23 @@ exports.generateOTP = () => {
 };
 
 // email config
-exports.mailTransport = () =>
-    nodemailer.createTransport({
+exports.sendMail = (subject, email, template, para=null) => {
+    // console.log(subject);
+    const mailtrans = nodemailer.createTransport({
         service: "gmail",
         auth: {
             user: process.env.EMAIL,
             pass: process.env.PASSWORD,
         },
     });
+
+    mailtrans.sendMail({
+        from:process.env.EMAIL,
+        to: email,
+        subject: subject,
+        html:template(para)
+    })
+}
 
 
 exports.generateEmailTemplate = (otp) => {

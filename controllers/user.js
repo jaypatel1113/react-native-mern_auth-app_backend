@@ -4,7 +4,7 @@ const VerificationToken = require("../models/verificationToken");
 const ResetToken = require("../models/resetToken");
 const cloudinary = require("../helper/imageUpload");
 const { sendError, createRandomBytes } = require("../helper/error");
-const { generateOTP, mailTransport, generateEmailTemplate, verifiedEmailTemplate, generatePasswordResetTemplate, verifiedPasswordTemplate } = require("../helper/mail");
+const { generateOTP, sendMail, generateEmailTemplate, verifiedEmailTemplate, generatePasswordResetTemplate, verifiedPasswordTemplate } = require("../helper/mail");
 const { isValidObjectId } = require("mongoose");
 
 exports.createUser = async (req, res) => {
@@ -34,12 +34,7 @@ exports.createUser = async (req, res) => {
         token: OTP,
     })
     
-    mailTransport().sendMail({
-        from:process.env.EMAIL,
-        to: newUser.email,
-        subject: "verify your email account",
-        html:generateEmailTemplate(OTP)
-    })
+    sendMail("verify your email account", newUser.email, generateEmailTemplate, OTP);
 
     await verifyToken.save();
     await newUser.save();
@@ -66,12 +61,7 @@ exports.verifyEmail = async (req, res) => {
     await User.findByIdAndUpdate(id, {verified: true})
     await VerificationToken.findByIdAndDelete(token._id);
 
-    mailTransport().sendMail({
-        from:process.env.EMAIL,
-        to: user.email,
-        subject: "Email Verified Successfully",
-        html:verifiedEmailTemplate()
-    })
+    sendMail("Email Verified Successfully", user.email, verifiedEmailTemplate);
 
     res.json({ success: true, message: "Your email is verified successfully!" });
 }
@@ -93,52 +83,43 @@ exports.forgetPassword = async (req, res) => {
     })
     await resetToken.save();
     
-    mailTransport().sendMail({
-        from:process.env.EMAIL,
-        to: user.email,
-        subject: "Password Reset Link",
-        html:generatePasswordResetTemplate(`https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`)
-    })
+    sendMail("Password Reset Link", user.email, generatePasswordResetTemplate, `https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`);
+
     res.json({ success: true, message: "Password reset link sent successfully!" });
 }
 
 exports.resetPassword = async (req, res) => {
     const {password} = req.body;
-    console.log(password)
+    // console.log(password)
     
     const user = await User.findById(req.user._id);
     if(!user) return sendError(res, "user not found!");
     
     const isSamePassword = await user.comparePassword(password);
-    console.log(isSamePassword);
-    console.log("one")
+    // console.log(isSamePassword);
+    // console.log("one")
     
     if(isSamePassword) return sendError(res, "new Password must be different!");
-    console.log("tow")
+    // console.log("tow")
     if(password.trim().length < 8 || password.trim().length > 20) {
-        console.log("threee");
+        // console.log("threee");
         return sendError(res, "password must be 8 to 20 char long!");
     }
-    console.log("four")
+    // console.log("four")
     
     
     // await User.findByIdAndUpdate(req.user._id, {password});
     // user.save()
-    console.log("first")
+    // console.log("first")
     user.password = password.trim();
-    console.log("seconf")
+    // console.log("seconf")
     await user.save();
-    console.log("third")
+    // console.log("third")
     await ResetToken.findOneAndDelete({owner: user._id});
-    console.log("forth")
-    console.log(user.email);
+    // console.log("forth")
+    // console.log(user.email);
 
-    mailTransport().sendMail({
-        from:process.env.EMAIL,
-        to: user.email,
-        subject: "Password Changed Successfully",
-        html:verifiedPasswordTemplate()
-    })
+    sendMail("Password Changed Successfully", user.email, verifiedPasswordTemplate);
     
     res.json({ success: true, message: "Your password is changed successfully!" });
 }
