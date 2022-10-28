@@ -104,31 +104,42 @@ exports.forgetPassword = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
     const {password} = req.body;
+    console.log(password)
     
     const user = await User.findById(req.user._id);
     if(!user) return sendError(res, "user not found!");
     
     const isSamePassword = await user.comparePassword(password);
-    // console.log(isSamePassword);
-
+    console.log(isSamePassword);
+    console.log("one")
+    
     if(isSamePassword) return sendError(res, "new Password must be different!");
-    if(password.trim().length < 8 || password.trim().length > 20)
-    return sendError(res, "password must be 8 to 20 char long!");
+    console.log("tow")
+    if(password.trim().length < 8 || password.trim().length > 20) {
+        console.log("threee");
+        return sendError(res, "password must be 8 to 20 char long!");
+    }
+    console.log("four")
     
     
     // await User.findByIdAndUpdate(req.user._id, {password});
     // user.save()
+    console.log("first")
     user.password = password.trim();
+    console.log("seconf")
     await user.save();
+    console.log("third")
     await ResetToken.findOneAndDelete({owner: user._id});
-    
+    console.log("forth")
+    console.log(user.email);
+
     mailTransport().sendMail({
         from:process.env.EMAIL,
         to: user.email,
         subject: "Password Changed Successfully",
-        html: verifiedPasswordTemplate()
+        html:verifiedPasswordTemplate()
     })
-
+    
     res.json({ success: true, message: "Your password is changed successfully!" });
 }
 

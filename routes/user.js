@@ -36,7 +36,7 @@ router.post("/sign-in", validateUserSignIn, userVlidation, userSignIn);
 router.post("/sign-out", isAuth, signOut);
 router.post("/verify-email", verifyEmail);
 router.post("/forget-password", forgetPassword);
-router.post("/reset-password", isResetTokenValid ,resetPassword);
+router.post("/reset-password", resetPassword);
 router.get("/verify-token", isResetTokenValid ,(req, res) => {
     res.json({success: true});
 } );
