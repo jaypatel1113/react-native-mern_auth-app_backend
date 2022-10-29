@@ -8,196 +8,161 @@ const { generateOTP, sendMail, generateEmailTemplate, verifiedEmailTemplate, gen
 const { isValidObjectId } = require("mongoose");
 
 exports.createUser = async (req, res) => {
+    const { fullname, email, password } = req.body;
+    // const isNewUser = await User.isThisEmailInUse(email);
+    // if (!isNewUser)
+    //     return res.json({
+    //         success: false,
+    //         message: "This email is already in use, try sign-in",
+    //     });
+    const olduser = await User.findOne({ email });
+    // console.log(olduser);
+    if (olduser)
+        return sendError(res, "This email is already in use, try sign-in");
 
-    try {
-        const { fullname, email, password } = req.body;
-        // const isNewUser = await User.isThisEmailInUse(email);
-        // if (!isNewUser)
-        //     return res.json({
-        //         success: false,
-        //         message: "This email is already in use, try sign-in",
-        //     });
-        const olduser = await User.find({ email });
-        // console.log(olduser);
-        if (olduser)
-            return sendError(res, "This email is already in use, try sign-in");
-    
-        const newUser = await User({
-            fullname,
-            email,
-            password,
-        });
-    
-        // creating token and validating email using verification code
-        const OTP = generateOTP();
-        // console.log(OTP);
-        const verifyToken = await VerificationToken({
-            owner: newUser._id,
-            token: OTP,
-        })
-        
-        sendMail("verify your email account", newUser.email, generateEmailTemplate, OTP);
-    
-        await verifyToken.save();
-        await newUser.save();
-        res.json({ success: true, newUser });
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
-    }
+    const newUser = await User({
+        fullname,
+        email,
+        password,
+    });
 
+    // creating token and validating email using verification code
+    const OTP = generateOTP();
+    // console.log(OTP);
+    const verifyToken = await VerificationToken({
+        owner: newUser._id,
+        token: OTP,
+    })
+    
+    sendMail("verify your email account", newUser.email, generateEmailTemplate, OTP);
+
+    await verifyToken.save();
+    await newUser.save();
+    res.json({ success: true, newUser });
 };
 
 exports.verifyEmail = async (req, res) => {
+    const {id, otp} = req.body;
+    if(!id || !otp.trim()) return sendError(res, "Invalid Request, missing parameters!")
+    if(!isValidObjectId(id)) return sendError(res, "Invalid user id");
 
-    try {
-        const {id, otp} = req.body;
-        if(!id || !otp.trim()) return sendError(res, "Invalid Request, missing parameters!")
-        if(!isValidObjectId(id)) return sendError(res, "Invalid user id");
+    const user = await User.findById(id);
+    // console.log(user);
+    if(!user) return sendError(res, "sorry, user not found");
     
-        const user = await User.findById(id);
-        // console.log(user);
-        if(!user) return sendError(res, "sorry, user not found");
-        
-        if(user.verified) return sendError(res, "this account is already veriified!");
-        const token = await VerificationToken.find({owner: user._id});
-        if(!token) return sendError(res, "sorry, user not found");
-        
-        const isMatched = await token.comparePassword(otp);
-        // console.log(isMatched);
-        if(!isMatched) return sendError(res, "incorrect OTP!");
-        
-        await User.findByIdAndUpdate(id, {verified: true})
-        await VerificationToken.findByIdAndDelete(token._id);
+    if(user.verified) return sendError(res, "this account is already veriified!");
+    const token = await VerificationToken.findOne({owner: user._id});
+    if(!token) return sendError(res, "sorry, user not found");
     
-        sendMail("Email Verified Successfully", user.email, verifiedEmailTemplate);
+    const isMatched = await token.comparePassword(otp);
+    // console.log(isMatched);
+    if(!isMatched) return sendError(res, "incorrect OTP!");
     
-        res.json({ success: true, message: "Your email is verified successfully!" });
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
-    }
+    await User.findByIdAndUpdate(id, {verified: true})
+    await VerificationToken.findByIdAndDelete(token._id);
 
+    sendMail("Email Verified Successfully", user.email, verifiedEmailTemplate);
+
+    res.json({ success: true, message: "Your email is verified successfully!" });
 }
 
 exports.forgetPassword = async (req, res) => {
-
-    try {
-        const {email} = req.body;
-        if(!email) return sendError(res, "Please enter a valid email!");
-        
-        const user = await User.find({email});
-        if(!user) return sendError(res, "User not found!");
-        
-        const token = await ResetToken.find({owner: user._id});
-        if(token) return sendError(res, "After only 1hr you can request for another token!");
-        
-        const randomBytes = await createRandomBytes();
-        // console.log(randomBytes);
-        const resetToken = await ResetToken({
-            owner: user._id, token: randomBytes
-        })
-        await resetToken.save();
-        
-        sendMail("Password Reset Link", user.email, generatePasswordResetTemplate, `https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`);
+    const {email} = req.body;
+    if(!email) return sendError(res, "Please enter a valid email!");
     
-        res.json({ success: true, message: "Password reset link sent successfully!" });
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
-    }
+    const user = await User.findOne({email});
+    if(!user) return sendError(res, "User not found!");
+    
+    const token = await ResetToken.findOne({owner: user._id});
+    if(token) return sendError(res, "After only 1hr you can request for another token!");
+    
+    const randomBytes = await createRandomBytes();
+    // console.log(randomBytes);
+    const resetToken = await ResetToken({
+        owner: user._id, token: randomBytes
+    })
+    await resetToken.save();
+    
+    sendMail("Password Reset Link", user.email, generatePasswordResetTemplate, `https://jay-react-resetpass-authapp.netlify.app/reset-password?token=${randomBytes}&id=${user._id}`);
 
+    res.json({ success: true, message: "Password reset link sent successfully!" });
 }
 
 exports.resetPassword = async (req, res) => {
-
-    try {
-        const {password} = req.body;
-        // console.log(password)
-        
-        const user = await User.findById(req.user._id);
-        if(!user) return sendError(res, "user not found!");
-        
-        const isSamePassword = await user.comparePassword(password);
-        // console.log(isSamePassword);
-        // console.log("one")
-        
-        if(isSamePassword) return sendError(res, "new Password must be different!");
-        // console.log("tow")
-        if(password.trim().length < 8 || password.trim().length > 20) {
-            // console.log("threee");
-            return sendError(res, "password must be 8 to 20 char long!");
-        }
-        // console.log("four")
-        
-        
-        // await User.findByIdAndUpdate(req.user._id, {password});
-        // user.save()
-        // console.log("first")
-        user.password = password.trim();
-        // console.log("seconf")
-        await user.save();
-        // console.log("third")
-        await ResetToken.findOneAndDelete({owner: user._id});
-        // console.log("forth")
-        // console.log(user.email);
+    const {password} = req.body;
+    // console.log(password)
     
-        sendMail("Password Changed Successfully", user.email, verifiedPasswordTemplate);
-        
-        res.json({ success: true, message: "Your password is changed successfully!" });
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
+    const user = await User.findById(req.user._id);
+    if(!user) return sendError(res, "user not found!");
+    
+    const isSamePassword = await user.comparePassword(password);
+    // console.log(isSamePassword);
+    // console.log("one")
+    
+    if(isSamePassword) return sendError(res, "new Password must be different!");
+    // console.log("tow")
+    if(password.trim().length < 8 || password.trim().length > 20) {
+        // console.log("threee");
+        return sendError(res, "password must be 8 to 20 char long!");
     }
+    // console.log("four")
+    
+    
+    // await User.findByIdAndUpdate(req.user._id, {password});
+    // user.save()
+    // console.log("first")
+    user.password = password.trim();
+    // console.log("seconf")
+    await user.save();
+    // console.log("third")
+    await ResetToken.findOneAndDelete({owner: user._id});
+    // console.log("forth")
+    // console.log(user.email);
 
+    sendMail("Password Changed Successfully", user.email, verifiedPasswordTemplate);
+    
+    res.json({ success: true, message: "Your password is changed successfully!" });
 }
 
 
 exports.userSignIn = async (req, res) => {
+    const { email, password } = req.body;
 
-    try {
-        const { email, password } = req.body;
-    
-        const user = await User.find({ email });
-    
-        if (!user)
-            return sendError(res, "user not found, with the given email!"); 
-    
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch)
-            return sendError(res, "email / password does not match!");
-    
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "1d",
+    const user = await User.findOne({ email });
+
+    if (!user)
+        return sendError(res, "user not found, with the given email!"); 
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch)
+        return sendError(res, "email / password does not match!");
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+    });
+
+    let oldTokens = user.tokens || [];
+
+    if (oldTokens.length) {
+        oldTokens = oldTokens.filter((t) => {
+            const timeDiff = (Date.now() - parseInt(t.signedAt)) / 1000;
+            if (timeDiff < 86400) {
+                return t;
+            }
         });
-    
-        let oldTokens = user.tokens || [];
-    
-        if (oldTokens.length) {
-            oldTokens = oldTokens.filter((t) => {
-                const timeDiff = (Date.now() - parseInt(t.signedAt)) / 1000;
-                if (timeDiff < 86400) {
-                    return t;
-                }
-            });
-        }
-    
-        await User.findByIdAndUpdate(user._id, {
-            tokens: [...oldTokens, { token, signedAt: Date.now().toString() }],
-        });
-    
-        const userInfo = {
-            fullname: user.fullname,
-            email: user.email,
-            avatar: user.avatar ? user.avatar : "",
-        };
-    
-        res.json({ success: true, user: userInfo, token });
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
     }
 
+    await User.findByIdAndUpdate(user._id, {
+        tokens: [...oldTokens, { token, signedAt: Date.now().toString() }],
+    });
+
+    const userInfo = {
+        fullname: user.fullname,
+        email: user.email,
+        avatar: user.avatar ? user.avatar : "",
+    };
+
+    res.json({ success: true, user: userInfo, token });
 };
 
 exports.uploadProfile = async (req, res) => {
@@ -229,26 +194,19 @@ exports.uploadProfile = async (req, res) => {
 };
 
 exports.signOut = async (req, res) => {
-
-    try {
-        if (req.headers && req.headers.authorization) {
-            const token = req.headers.authorization.split(" ")[1];
-            if (!token) {
-                return res
-                    .status(401)
-                    .json({ success: false, message: "Authorization fail!" });
-            }
-    
-            const tokens = req.user.tokens;
-    
-            const newTokens = tokens.filter((t) => t.token !== token);
-    
-            await User.findByIdAndUpdate(req.user._id, { tokens: newTokens });
-            res.json({ success: true, message: "Sign out successfully!" });
+    if (req.headers && req.headers.authorization) {
+        const token = req.headers.authorization.split(" ")[1];
+        if (!token) {
+            return res
+                .status(401)
+                .json({ success: false, message: "Authorization fail!" });
         }
-        
-    } catch (error) {
-        sendError(res, error.message, 500);
-    }
 
+        const tokens = req.user.tokens;
+
+        const newTokens = tokens.filter((t) => t.token !== token);
+
+        await User.findByIdAndUpdate(req.user._id, { tokens: newTokens });
+        res.json({ success: true, message: "Sign out successfully!" });
+    }
 };
