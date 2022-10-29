@@ -17,7 +17,7 @@ exports.createUser = async (req, res) => {
         //         success: false,
         //         message: "This email is already in use, try sign-in",
         //     });
-        const olduser = await User.findOne({ email });
+        const olduser = await User.find({ email });
         // console.log(olduser);
         if (olduser)
             return sendError(res, "This email is already in use, try sign-in");
@@ -60,7 +60,7 @@ exports.verifyEmail = async (req, res) => {
         if(!user) return sendError(res, "sorry, user not found");
         
         if(user.verified) return sendError(res, "this account is already veriified!");
-        const token = await VerificationToken.findOne({owner: user._id});
+        const token = await VerificationToken.find({owner: user._id});
         if(!token) return sendError(res, "sorry, user not found");
         
         const isMatched = await token.comparePassword(otp);
@@ -86,10 +86,10 @@ exports.forgetPassword = async (req, res) => {
         const {email} = req.body;
         if(!email) return sendError(res, "Please enter a valid email!");
         
-        const user = await User.findOne({email});
+        const user = await User.find({email});
         if(!user) return sendError(res, "User not found!");
         
-        const token = await ResetToken.findOne({owner: user._id});
+        const token = await ResetToken.find({owner: user._id});
         if(token) return sendError(res, "After only 1hr you can request for another token!");
         
         const randomBytes = await createRandomBytes();
@@ -158,7 +158,7 @@ exports.userSignIn = async (req, res) => {
     try {
         const { email, password } = req.body;
     
-        const user = await User.findOne({ email });
+        const user = await User.find({ email });
     
         if (!user)
             return sendError(res, "user not found, with the given email!"); 

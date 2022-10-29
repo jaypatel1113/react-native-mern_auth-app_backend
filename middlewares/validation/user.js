@@ -65,7 +65,7 @@ exports.isResetTokenValid = async (req, res, next) => {
     const user = await User.findById(id);
     if(!user) return sendError(res, "user not found!");
     
-    const resetToken = await ResetToken.findOne({owner: user._id});
+    const resetToken = await ResetToken.find({owner: user._id});
     if(!resetToken) return sendError(res, "Reset token Expired or Invalid!");
 
     const isValid = await resetToken.compareToken(token);
