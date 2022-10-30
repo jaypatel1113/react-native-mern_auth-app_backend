@@ -194,6 +194,7 @@ exports.uploadProfile = async (req, res) => {
 };
 
 exports.signOut = async (req, res) => {
+    // console.log(req.headers);
     if (req.headers && req.headers.authorization) {
         const token = req.headers.authorization.split(" ")[1];
         if (!token) {
@@ -210,3 +211,13 @@ exports.signOut = async (req, res) => {
         res.json({ success: true, message: "Sign out successfully!" });
     }
 };
+
+exports.getProfile = async (req, res) => {
+    console.log(req.user);
+    if(!req.user) 
+        return sendError(res, "unauthorizex access!");
+    res.json({
+        success: true,
+        profile: req.user,
+    });
+}
