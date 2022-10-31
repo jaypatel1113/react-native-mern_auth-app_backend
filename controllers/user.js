@@ -213,7 +213,7 @@ exports.signOut = async (req, res) => {
 };
 
 exports.getProfile = async (req, res) => {
-    console.log(req.user);
+    // console.log(req.user);
     if(!req.user) 
         return sendError(res, "unauthorizex access!");
     res.json({
