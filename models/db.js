@@ -8,6 +8,6 @@ mongoose
         useFindAndModify: false,
     })
     .then(() => {
-        console.log("our db is connected");
+        console.log("DB is connected!");
     })
     .catch((err) => console.log(err.message));

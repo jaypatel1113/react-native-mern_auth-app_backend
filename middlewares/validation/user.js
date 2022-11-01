@@ -11,22 +11,22 @@ exports.validateUserSignUp = [
         .isEmpty()
         .withMessage("Name is required!")
         .isString()
-        .withMessage("Must be a valid name!")
+        .withMessage("Enter valid Name!")
         .isLength({ min: 3, max: 20 })
-        .withMessage("Name must be within 3 to 20 character!"),
+        .withMessage("Name must be within 3 to 20 character long!"),
     check("email").normalizeEmail().isEmail().withMessage("Invalid email!"),
     check("password")
         .trim()
         .not()
         .isEmpty()
-        .withMessage("Password is empty!")
+        .withMessage("Password is required!")
         .isLength({ min: 8, max: 20 })
         .withMessage("Password must be 3 to 20 characters long!"),
     check("confirmPassword")
         .trim()
         .not()
         .isEmpty()
-        .withMessage("Confirm Password is empty!")
+        .withMessage("Confirm Password is required!")
         .custom((value, { req }) => {
             if (value !== req.body.password) {
                 throw new Error("Both password must be same!");
@@ -49,12 +49,12 @@ exports.validateUserSignIn = [
     check("email")
         .trim()
         .isEmail()
-        .withMessage("email / password is required!"),
+        .withMessage("Email is required!"),
     check("password")
         .trim()
         .not()
         .isEmpty()
-        .withMessage("email / password is required!"),
+        .withMessage("Password is required!"),
 ];
 
 exports.isResetTokenValid = async (req, res, next) => {
@@ -63,13 +63,13 @@ exports.isResetTokenValid = async (req, res, next) => {
     if(!isValidObjectId(id)) return sendError(res, "Invalid User!");
 
     const user = await User.findById(id);
-    if(!user) return sendError(res, "user not found!");
+    if(!user) return sendError(res, "User not found!");
     
     const resetToken = await ResetToken.findOne({owner: user._id});
     if(!resetToken) return sendError(res, "Reset token Expired or Invalid!");
 
     const isValid = await resetToken.compareToken(token);
-    if(!isValid) return sendError(res, "reset token invalid!");
+    if(!isValid) return sendError(res, "Reset token Invalid!");
 
     req.user= user;
     next();

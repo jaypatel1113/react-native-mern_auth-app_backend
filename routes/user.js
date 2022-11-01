@@ -1,6 +1,6 @@
 const express = require("express");
-
 const router = express.Router();
+
 const {
     createUser,
     userSignIn,
@@ -11,13 +11,13 @@ const {
     resetPassword,
     getProfile,
 } = require("../controllers/user");
-const { isAuth } = require("../middlewares/auth");
 const {
     validateUserSignUp,
     userVlidation,
     validateUserSignIn,
     isResetTokenValid,
 } = require("../middlewares/validation/user");
+const { isAuth } = require("../middlewares/auth");
 
 const multer = require("multer");
 

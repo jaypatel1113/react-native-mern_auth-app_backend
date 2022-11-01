@@ -26,7 +26,7 @@ app.use(userRouter);
 //   console.log(result);
 // };
 
-// test('niraj@email.com', 'niraj12');
+// test('jay@email.com', 'jay1122');
 
 app.get("/test", (req, res) => {
     res.send("Hello world");
@@ -35,10 +35,10 @@ app.get("/test", (req, res) => {
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: `Welcome to backend zone!, listening on port ${PORT}`,
+        message: `Welcome to Backend Zone!, listening on port ${PORT}`,
     });
 });
 
 app.listen(PORT, () => {
-    console.log("port is listening on " + PORT);
+    console.log("Server is running on PORT: " + PORT);
 });

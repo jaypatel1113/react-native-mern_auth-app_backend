@@ -32,7 +32,7 @@ verificationTokenSchema.pre("save", async function (next) {
 });
 
 verificationTokenSchema.methods.comparePassword = async function (token) {
-    if (!token) throw new Error("Token is mission, can not compare!");
+    if (!token) throw new Error("Token is mission, cannot compare!");
 
     try {
         const result = await bcrypt.compareSync(token, this.token);
