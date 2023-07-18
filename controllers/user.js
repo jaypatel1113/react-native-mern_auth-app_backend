@@ -138,7 +138,7 @@ exports.userSignIn = async (req, res) => {
     if (!isMatch)
         return sendError(res, "Invalid Credentials!");
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
         expiresIn: "1d",
     });
 
